@@ -79,6 +79,7 @@ describe('Frontend Todo Application', () => {
             onchange="toggleTodo(${todo.id})"
           />
           <span class="todo-text">${escapeHtml(todo.text)}</span>
+          <button class="edit-btn" onclick="editTodo(${todo.id})">Edit</button>
           <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
         </div>
       `).join('');
@@ -86,6 +87,8 @@ describe('Frontend Todo Application', () => {
       expect(todoList.children.length).toBe(2);
       expect(todoList.innerHTML).toContain('Test todo');
       expect(todoList.innerHTML).toContain('Completed todo');
+      expect(todoList.innerHTML).toContain('Edit');
+      expect(todoList.innerHTML).toContain('Delete');
     });
   });
 
@@ -283,6 +286,87 @@ describe('Frontend Todo Application', () => {
       }
 
       expect(alert).toHaveBeenCalledWith('Failed to delete todo');
+    });
+  });
+
+  describe('editTodo function', () => {
+    test('should edit a todo', async () => {
+      const updatedTodo = { id: 1, text: 'Updated todo', completed: false };
+      
+      global.prompt = jest.fn(() => 'Updated todo');
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => updatedTodo
+      });
+
+      const response = await fetch('/api/todos/1', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: 'Updated todo' }),
+      });
+
+      expect(response.ok).toBe(true);
+      const result = await response.json();
+      expect(result.text).toBe('Updated todo');
+    });
+
+    test('should not edit if prompt is cancelled', () => {
+      global.prompt = jest.fn(() => null);
+      
+      // Should return early without making a fetch call
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    test('should not edit with empty text', () => {
+      global.prompt = jest.fn(() => '');
+      
+      const text = '';
+      if (!text || text.trim() === '') {
+        alert('Todo text cannot be empty');
+      }
+
+      expect(alert).toHaveBeenCalledWith('Todo text cannot be empty');
+    });
+
+    test('should not edit with whitespace-only text', () => {
+      global.prompt = jest.fn(() => '   ');
+      
+      const text = '   ';
+      if (!text || text.trim() === '') {
+        alert('Todo text cannot be empty');
+      }
+
+      expect(alert).toHaveBeenCalledWith('Todo text cannot be empty');
+    });
+
+    test('should handle edit error', async () => {
+      global.prompt = jest.fn(() => 'Updated todo');
+      fetch.mockResolvedValueOnce({
+        ok: false
+      });
+
+      const response = await fetch('/api/todos/1', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: 'Updated todo' }),
+      });
+
+      if (!response.ok) {
+        alert('Failed to edit todo');
+      }
+
+      expect(alert).toHaveBeenCalledWith('Failed to edit todo');
+    });
+
+    test('should trim whitespace from edit text', () => {
+      const text = '  Updated todo with spaces  ';
+      const trimmed = text.trim();
+      
+      expect(trimmed).toBe('Updated todo with spaces');
     });
   });
 

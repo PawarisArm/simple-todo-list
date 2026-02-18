@@ -73,9 +73,10 @@ app.post('/api/todos', (req, res) => {
   }
 });
 
-// Toggle todo completion
+// Update todo (toggle completion or edit text)
 app.put('/api/todos/:id', (req, res) => {
   const id = parseInt(req.params.id);
+  const { text } = req.body;
   const todos = readTodos();
   const todoIndex = todos.findIndex(t => t.id === id);
   
@@ -83,8 +84,16 @@ app.put('/api/todos/:id', (req, res) => {
     return res.status(404).json({ error: 'Todo not found' });
   }
   
-   // Toggle status
-  todos[todoIndex].completed = !todos[todoIndex].completed;
+  // If text is provided, edit the todo text
+  if (text !== undefined) {
+    if (!text || text.trim() === '') {
+      return res.status(400).json({ error: 'Todo text is required' });
+    }
+    todos[todoIndex].text = text.trim();
+  } else {
+    // Otherwise, toggle completion status
+    todos[todoIndex].completed = !todos[todoIndex].completed;
+  }
 
   // Save updated todos
   writeTodos(todos);

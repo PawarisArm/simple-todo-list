@@ -147,12 +147,102 @@ describe('Todo API Endpoints', () => {
       expect(response.body.completed).toBe(false);
     });
 
+    test('should edit todo text', async () => {
+      // Create a todo first
+      const createResponse = await request(app)
+        .post('/api/todos')
+        .send({ text: 'Original text' });
+      
+      const todoId = createResponse.body.id;
+      
+      // Edit the todo
+      const response = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .send({ text: 'Updated text' });
+      
+      expect(response.status).toBe(200);
+      expect(response.body.text).toBe('Updated text');
+      expect(response.body.id).toBe(todoId);
+    });
+
+    test('should trim whitespace when editing todo text', async () => {
+      // Create a todo
+      const createResponse = await request(app)
+        .post('/api/todos')
+        .send({ text: 'Original text' });
+      
+      const todoId = createResponse.body.id;
+      
+      // Edit with whitespace
+      const response = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .send({ text: '  Updated text with spaces  ' });
+      
+      expect(response.status).toBe(200);
+      expect(response.body.text).toBe('Updated text with spaces');
+    });
+
+    test('should return 400 if edited text is empty', async () => {
+      // Create a todo
+      const createResponse = await request(app)
+        .post('/api/todos')
+        .send({ text: 'Original text' });
+      
+      const todoId = createResponse.body.id;
+      
+      // Try to edit with empty text
+      const response = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .send({ text: '' });
+      
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'Todo text is required');
+    });
+
+    test('should return 400 if edited text is only whitespace', async () => {
+      // Create a todo
+      const createResponse = await request(app)
+        .post('/api/todos')
+        .send({ text: 'Original text' });
+      
+      const todoId = createResponse.body.id;
+      
+      // Try to edit with whitespace only
+      const response = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .send({ text: '   ' });
+      
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'Todo text is required');
+    });
+
     test('should return 404 if todo not found', async () => {
       const response = await request(app)
         .put('/api/todos/999999');
       
       expect(response.status).toBe(404);
       expect(response.body).toHaveProperty('error', 'Todo not found');
+    });
+
+    test('should preserve completed status when editing text', async () => {
+      // Create a todo
+      const createResponse = await request(app)
+        .post('/api/todos')
+        .send({ text: 'Original text' });
+      
+      const todoId = createResponse.body.id;
+      
+      // Complete the todo
+      await request(app).put(`/api/todos/${todoId}`);
+      
+      // Edit the text
+      const response = await request(app)
+        .put(`/api/todos/${todoId}`)
+        .send({ text: 'Updated text' });
+      
+      expect(response.status).toBe(200);
+      expect(response.body.completed).toBe(true);
+      expect(response.body.text).toBe('Updated text');
     });
   });
 
